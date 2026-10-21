@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>History · Account Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;600;700&family=Questrial&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-in">
+  <div class="topbar-left">
+    <a class="brand" href="/"><img class="brand-logo" src="/static/logo.webp" alt="Social Links" width="169" height="26"><span class="brand-sub">Account Setup</span></a>
+    <nav class="nav"><a href="/">New request</a><a href="/history" class="active">History</a></nav>
+  </div>
+  <span class="who" id="who"></span>
+</div></header>
+
+<main class="container">
+  <div class="page-head">
+    <div><h1>History</h1><p>Every request from the form, CSV uploads and Slack.</p></div>
+    <label class="field" style="flex:0 1 320px"><span class="label">Search</span>
+      <input class="input" id="q" placeholder="Company, product, person…" autocomplete="off">
+    </label>
+  </div>
+  <section class="card">
+    <div class="table-wrap"><table class="history">
+      <thead><tr><th>#</th><th>Request</th><th>Users</th><th>Source</th><th>Created</th><th>Status</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="sub">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script src="/static/common.js"></script>
+<script>
+const STATUS = { queued: 'Queued', running: 'Running', done: 'Done', done_with_errors: 'With errors', failed: 'Failed' };
+const TAG = { queued: '', running: 'running', done: 'done', done_with_errors: 'failed', failed: 'failed' };
+let JOBS = [];
+function draw() {
+  const q = $('#q').value.trim().toLowerCase();
+  const list = JOBS.filter((j) => !q || `${j.title} ${j.created_by} ${j.source}`.toLowerCase().includes(q));
+  $('#rows').innerHTML = list.length ? list.map((j) => `<tr>
+      <td class="sub">${j.id}</td>
+      <td><a href="/jobs/${j.id}">${esc(j.title)}</a>${j.dry_run ? ' <span class="tag">dry run</span>' : ''}</td>
+      <td>${j.users}</td>
+      <td class="sub">${esc(j.source)}${j.created_by && j.created_by !== 'web' ? ' · ' + esc(j.created_by) : ''}</td>
+      <td class="sub">${esc(fmtDateTime(j.created_at))}</td>
+      <td><span class="tag ${TAG[j.status] || ''}">${STATUS[j.status] || esc(j.status)}</span></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="sub">No requests yet.</td></tr>';
+}
+$('#q').addEventListener('input', draw);
+showUser();
+api('/api/jobs').then(({ ok, data }) => { JOBS = ok ? data : []; draw(); });
+</script>
+</body>
+</html>

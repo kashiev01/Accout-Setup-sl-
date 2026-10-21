@@ -1,0 +1,18 @@
+# Secrets
+.env
+config.py
+
+# Runtime state
+data/
+browser_profile/
+__pycache__/
+
+# Local CLI input/output (clients_examples.csv stays tracked)
+clients.csv
+packs_keys.json
+slapi_tokens.json
+emails.html
+
+# Personal editor / Claude settings
+*.code-workspace
+.claude/settings.local.json

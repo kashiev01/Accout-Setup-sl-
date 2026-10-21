@@ -1,0 +1,11 @@
+.env
+data/
+browser_profile/
+__pycache__/
+config.py
+*.csv
+*.json
+emails.html
+.claude/
+.git/
+*.code-workspace

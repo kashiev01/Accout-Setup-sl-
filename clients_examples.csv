@@ -1,0 +1,20 @@
+product;full_name;Email;Company name;license_type;start_date;end_date;modes;packs;company_id;points
+Crimewall;Example Trial License;example.trial@test.com;ExampleCo;trial;2026-01-01;2026-12-31;quicklink;;0;
+Crimewall;Example Paid License All Modes;example.license@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink,dashboard_manager,osint_start;;0;
+Crimewall;Example Partner License;example.partner@test.com;ExampleCo;partner;2026-01-01;2026-12-31;dashboard_manager;;0;
+Crimewall;Example Internal License;example.internal@test.com;ExampleCo;internal;2026-01-01;2026-12-31;osint_start;;0;
+Crimewall;Example No Modes;example.nomodes@test.com;ExampleCo;trial;2026-01-01;2026-12-31;none;;0;
+Crimewall;Example Darknet Trial Pack;example.darknet.trial@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Trial;0;
+Crimewall;Example Darknet Small Paid Pack;example.darknet.small@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Small;0;
+Crimewall;Example Darknet Big Paid Pack;example.darknet.big@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Big;0;
+Crimewall;Example Telegram Trial Pack;example.tg.trial@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;TG Insight Trial;0;
+Crimewall;Example Telegram Small Paid Pack;example.tg.small@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;TG Insight Customer Small;0;
+Crimewall;Example Telegram Big Paid Pack;example.tg.big@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;TG Insight Customer Big;0;
+Crimewall;Example Two Packs Mixed Tiers;example.multi@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Trial,TG Insight Customer Big;0;
+Crimewall;Example Pack With Date Override;example.override@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Trial:2026-02-01:2026-05-01;0;
+Crimewall;Example One Default One Override;example.mixedoverride@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Big,TG Insight Trial:2026-03-01:2026-09-01;0;
+Crimewall;Example With Company Id;example.companyid@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Trial;123456;
+Crimewall;Example Without Company Id;example.nocompanyid@test.com;ExampleCo;paid;2026-01-01;2026-12-31;quicklink;DN Customer Trial;;
+Crimewall;Example Default Product Column;example.defaultproduct@test.com;ExampleCo;trial;2026-01-01;2026-12-31;quicklink;;0;
+SL API;Example SLAPI Minimal;example.slapi@test.com;;trial;2026-01-01;2026-12-31;;;;5000
+SL API;Example SLAPI With Packs;example.slapi.packs@test.com;;paid;2026-01-01;2026-12-31;;API DN Business,SMP Paid Basic;;5000

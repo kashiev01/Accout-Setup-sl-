@@ -1,0 +1,4 @@
+# playwright must match the Docker base image tag (mcr.microsoft.com/playwright/python:v1.54.0)
+playwright==1.54.0
+fastapi>=0.110
+uvicorn>=0.29
