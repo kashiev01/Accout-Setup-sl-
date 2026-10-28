@@ -12,6 +12,14 @@ from models import Client, LICENSE_TYPE_MAP
 from packs import PACK_KEY_TYPES, template_label
 
 USERS_URL = config.ADMIN_URL.rstrip("/") + "/users/user/"
+FEATURE_URL = config.ADMIN_URL.rstrip("/") + "/users/feature/"
+
+# Fixed admin object ids for the "AI Mode" Feature flags (there is no stable way to
+# look these up by name search alone — both objects match a "?q=AI" filter, so the
+# id is hardcoded here rather than searched for). If these ever need re-pointing,
+# find the right objects at FEATURE_URL + "?q=AI" in the live admin.
+AI_USER_FEATURE_ID = "128"      # scope=users: add individual emails to its `teammates`
+AI_COMPANY_FEATURE_ID = "115"   # "CRWL-2567 AI Chat Team Scope", scope=teams: add the company to its `teams`
 
 
 def login(page: Page) -> None:
@@ -40,6 +48,32 @@ def select2_choose(page: Page, field_id: str, value: str) -> None:
     search_box = page.locator(".select2-dropdown .select2-search__field")
     search_box.wait_for(state="visible", timeout=5000)
     search_box.type(value, delay=50)
+    try:
+        page.wait_for_selector(
+            ".select2-results__option:not(.select2-results__option--disabled)",
+            timeout=5000,
+        )
+        options = page.locator(".select2-results__option:not(.select2-results__option--disabled)")
+        exact = options.filter(has_text=value)
+        if exact.count() > 0:
+            exact.first.click()
+        else:
+            options.first.click()
+    except PlaywrightTimeout:
+        search_box.press("Enter")
+
+
+def select2_choose_multi(page: Page, field_id: str, value: str) -> None:
+    """
+    Like select2_choose, but for a multi-select AJAX field (e.g. `teammates`,
+    `teams`): its search input lives inline among the already-selected chips
+    inside `.select2-selection__rendered`, not in a floating dropdown search
+    box, so it needs its own click/locate path. Selecting an option here adds
+    it to the existing selection rather than replacing it.
+    """
+    search_box = page.locator(f"#{field_id} + span .select2-search__field")
+    search_box.click()
+    search_box.fill(value)
     try:
         page.wait_for_selector(
             ".select2-results__option:not(.select2-results__option--disabled)",
@@ -111,8 +145,10 @@ def open_existing_account(page: Page, client: Client) -> None:
 
 DASHBOARD_MANAGER_PERMISSION_SELECTORS = [
     "#id_manager_dashboard_activity_enabled",
+    "#id_manager_dashboard_manager_activity_enabled",
     "#id_manager_dashboard_sessions_enabled",
     "#id_manager_dashboard_users_enabled",
+    "#id_manager_dashboard_usage_analytics_enabled",
 ]
 
 
@@ -139,6 +175,26 @@ def set_modes(page: Page, client: Client) -> None:
             checkbox.uncheck()
 
     page.select_option("#id_two_factor_auth_type", "BY_EMAIL")
+
+
+def enable_ai_for_user(page: Page, email: str) -> None:
+    """Add this email to the AI Mode (per-user) Feature's `teammates` list."""
+    page.goto(f"{FEATURE_URL}{AI_USER_FEATURE_ID}/change/")
+    page.wait_for_load_state("networkidle")
+    select2_choose_multi(page, "id_teammates", email)
+    page.click("input[name='_save']")
+    page.wait_for_load_state("networkidle")
+    print(f"  [CW] AI Mode (user) enabled for {email}")
+
+
+def enable_ai_for_company(page: Page, company: str) -> None:
+    """Add this company to the AI Mode (whole company) Feature's `teams` list."""
+    page.goto(f"{FEATURE_URL}{AI_COMPANY_FEATURE_ID}/change/")
+    page.wait_for_load_state("networkidle")
+    select2_choose_multi(page, "id_teams", company)
+    page.click("input[name='_save']")
+    page.wait_for_load_state("networkidle")
+    print(f"  [CW] AI Mode (whole company) enabled for {company}")
 
 
 def set_pack_keys(page: Page, client: Client, packs_api_key: str) -> None:
@@ -182,7 +238,12 @@ def process_client(page: Page, client: Client, dry_run: bool) -> str:
 
     if dry_run:
         pack_info = f", packs: {', '.join(template_label(t) for _, t, _, _ in client.packs)}" if client.packs else ""
-        print(f"  [DRY RUN] Would be {action}: {client.full_name} / {client.company} ({client.email}){pack_info}")
+        ai_info = ""
+        if "ai_user" in client.modes:
+            ai_info += ", AI Mode (user)"
+        if "ai_company" in client.modes:
+            ai_info += f", AI Mode (company: {client.company})"
+        print(f"  [DRY RUN] Would be {action}: {client.full_name} / {client.company} ({client.email}){pack_info}{ai_info}")
         return action
 
     if exists:
@@ -197,6 +258,11 @@ def process_client(page: Page, client: Client, dry_run: bool) -> str:
     set_modes(page, client)
     page.click("input[name='_save']")
     page.wait_for_load_state("networkidle")
+
+    if "ai_user" in client.modes:
+        enable_ai_for_user(page, client.email)
+    if "ai_company" in client.modes:
+        enable_ai_for_company(page, client.company)
 
     return action
 

@@ -5,7 +5,20 @@ from dataclasses import dataclass, field
 
 from packs import parse_packs_field
 
-VALID_MODES = {"quicklink", "dashboard_manager", "osint_start"}
+VALID_MODES = {"quicklink", "dashboard_manager", "osint_start", "ai_user", "ai_company"}
+
+# Free-text mode phrasings from request forms that don't map 1:1 onto a VALID_MODES
+# token by simple lower()+space->underscore. Matched case-insensitively on the raw
+# (space-separated, not yet underscored) phrase.
+MODE_ALIASES = {
+    "ai mode (for user only)": "ai_user",
+    "ai mode (for whole company)": "ai_company",
+}
+
+
+def normalize_mode(raw: str) -> str:
+    s = raw.strip().lower()
+    return MODE_ALIASES.get(s, s.replace(" ", "_"))
 
 # CSV license_type -> CrimeWall #id_license_type option value ("paid" is CW's "license").
 LICENSE_TYPE_MAP = {
@@ -17,6 +30,14 @@ LICENSE_TYPE_MAP = {
 
 # SL API rows only accept trial|paid (they pick the token's Plan, see slapi.SLAPI_PLANS).
 SLAPI_LICENSE_TYPES = {"trial", "paid"}
+
+
+def normalize_license(raw: str) -> str:
+    """'Paid License' / 'Trial' / 'Internal License' -> 'paid' / 'trial' / 'internal'."""
+    s = raw.strip().lower()
+    if s.endswith(" license"):
+        s = s[: -len(" license")].strip()
+    return s
 
 
 @dataclass
@@ -61,7 +82,7 @@ class Client:
             )
 
         raw_modes = row.get("modes", "")
-        modes = [m.strip().lower() for m in raw_modes.split(",") if m.strip() and m.strip().lower() != "none"]
+        modes = [normalize_mode(m) for m in raw_modes.split(",") if m.strip() and m.strip().lower() != "none"]
         unknown = set(modes) - VALID_MODES
         if unknown:
             raise ValueError(f"Unknown modes: {unknown}")

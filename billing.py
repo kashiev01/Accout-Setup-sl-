@@ -383,16 +383,12 @@ def add_packs_to_key(page: Page, api_key_value: str, client: Client) -> None:
     if not touched_end_dates:
         return
 
-    page.click("input[name='_save']")
+    page.click("input[name='_continue']")
     page.wait_for_load_state("networkidle")
 
     # The server resets expired → started+10 on first save (template default).
-    # Re-open, correct only the rows this run touched, and save once more.
-    page.goto(f"{BILLING_APIKEY_URL}?q={api_key_value}")
-    page.wait_for_load_state("networkidle")
-    page.locator("#result_list tbody tr:first-child th a").click()
-    page.wait_for_load_state("networkidle")
-
+    # _continue reloads the same change form, so just re-check the rows this
+    # run touched and save once more — no need to re-navigate to get there.
     needs_resave = False
     for row_idx, expected_end in touched_end_dates.items():
         expired_field = page.locator(f"input[name='pack_set-{row_idx}-expired_0']")

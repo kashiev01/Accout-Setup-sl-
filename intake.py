@@ -26,7 +26,7 @@ import io
 import re
 from datetime import date
 
-from models import Client, LICENSE_TYPE_MAP, SLAPI_LICENSE_TYPES, VALID_MODES
+from models import Client, LICENSE_TYPE_MAP, SLAPI_LICENSE_TYPES, VALID_MODES, normalize_mode, normalize_license
 from packs import (
     BILLING_TEMPLATES,
     PRODUCT_CATEGORIES,
@@ -64,6 +64,32 @@ def normalize_date(raw: str) -> str:
     else:
         return t
     return f"{y}-{int(mo):02d}-{int(d):02d}"
+
+
+_MONTH_NAMES = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
+_MONTH_DATE_RE = re.compile(r"\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b")
+
+
+def parse_month_dates(text: str) -> list[str]:
+    """
+    'Oct 28, 2026 to Oct 27, 2027' / 'October 29 to November 7, 2026' /
+    'Oct 26 - Nov 6' -> ['2026-10-28', '2027-10-27'] etc. A date missing its
+    year borrows the other date's year; if neither has one, today's year.
+    """
+    found = []
+    for mon_s, day_s, year_s in _MONTH_DATE_RE.findall(text):
+        mon = _MONTH_NAMES.get(mon_s.lower())
+        if mon is None:
+            continue
+        found.append((mon, int(day_s), int(year_s) if year_s else None))
+    years = [y for _, _, y in found if y]
+    default_year = years[-1] if years else date.today().year
+    return [f"{y or default_year}-{mo:02d}-{d:02d}" for mo, d, y in found]
 
 
 def is_iso_date(s: str) -> bool:
@@ -130,7 +156,7 @@ def build_rows(req: dict) -> tuple[list[dict], list[str], list[str]]:
     product = "SL API" if str(req.get("product", "")).strip().lower() in ("sl api", "slapi", "api") else "Crimewall"
     is_cw = product == "Crimewall"
 
-    lt = str(req.get("license_type", "")).strip().lower()
+    lt = normalize_license(str(req.get("license_type", "")))
     if lt == "license":
         lt = "paid"
     valid_lt = LICENSE_TYPE_MAP if is_cw else SLAPI_LICENSE_TYPES
@@ -188,7 +214,7 @@ def build_rows(req: dict) -> tuple[list[dict], list[str], list[str]]:
 
     modes: list[str] = []
     if is_cw:
-        modes = [str(m).strip().lower() for m in req.get("modes") or [] if str(m).strip()]
+        modes = [normalize_mode(str(m)) for m in req.get("modes") or [] if str(m).strip()]
         bad = set(modes) - VALID_MODES
         if bad:
             errors.append(f"Unknown modes: {', '.join(sorted(bad))}")
@@ -332,10 +358,13 @@ def parse_request_text(text: str) -> dict:
         return " ".join(fields.get(key, [])).strip()
 
     product = "SL API" if "api" in one("product").lower() else "Crimewall"
-    dates = [normalize_date(d) for d in _DATE_TOKEN_RE.findall(one("period"))]
+    period_text = one("period")
+    dates = [normalize_date(d) for d in _DATE_TOKEN_RE.findall(period_text)]
+    if len(dates) < 2:
+        dates = parse_month_dates(period_text)
 
     packs = [p.strip() for p in one("packs").split(",") if p.strip() and p.strip().lower() != "none"]
-    modes = [m.strip().lower().replace(" ", "_") for m in one("modes").split(",")
+    modes = [normalize_mode(m) for m in one("modes").split(",")
              if m.strip() and m.strip().lower() != "none"]
 
     users, notes, points = [], [], ""
@@ -359,7 +388,7 @@ def parse_request_text(text: str) -> dict:
 
     req = {
         "product": product,
-        "license_type": one("license").lower(),
+        "license_type": normalize_license(one("license")),
         "start_date": dates[0] if dates else "",
         "end_date": dates[1] if len(dates) > 1 else "",
         "company": one("company"),
